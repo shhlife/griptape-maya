@@ -29,20 +29,6 @@ cd griptape-maya
 poetry install
 ```
 
-## Directory Structure
-
-```bash
-griptape-maya/
-├── src/
-│   ├── scripts/         # Python scripts
-│   ├── shelves/         # Maya shelf buttons
-│   └── icons/           # Tool icons
-├── tests/               # Unit tests
-├── griptape-maya.mod    # Maya module file
-├── pyproject.toml       # Poetry configuration
-└── requirements.txt     # Requirements
-
-```
 
 4. Make sure your Module file points to the right spot
 
@@ -67,4 +53,18 @@ SSL certificates configured for darwin
 Added virtual environment to Python path: /Users/jason/Documents/GitHub/griptape-maya/.venv/lib/python3.11/site-packages
 Griptape Tools initialized successfully
 ---------------------------------------------
+```
+
+## Directory Structure
+
+```bash
+griptape-maya/
+├── src/
+│   ├── scripts/         # Python scripts
+│   ├── shelves/         # Maya shelf buttons
+│   └── icons/           # Tool icons
+├── tests/               # Unit tests
+├── griptape-maya.mod    # Maya module file
+├── pyproject.toml       # Poetry configuration
+└── requirements.txt     # Requirements
 ```

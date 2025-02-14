@@ -10,9 +10,13 @@ def get_venv_site_packages():
     """Get the path to the virtual environment's site-packages"""
     # Get the module path first
     module_path = cmds.moduleInfo(moduleName="griptape-maya", path=True)
-    # Go up from src to project root and into .venv
+
+    # Get current Python version
+    py_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+
+    # Go up from src to project root and into .venv with correct Python version
     venv_path = os.path.join(
-        os.path.dirname(module_path), ".venv", "lib", "python3.11", "site-packages"
+        os.path.dirname(module_path), ".venv", "lib", py_version, "site-packages"
     )
 
     if os.path.exists(venv_path):
@@ -68,7 +72,7 @@ def initialize_griptape():
         cmds.warning(f"Failed to initialize Griptape Tools: {e}")
 
 
-sys.path.append(
-    "/Users/jason/Documents/GitHub/griptape-maya/.venv/lib/python3.11/site-packages"
-)
+# sys.path.append(
+#     "/Users/jason/Documents/GitHub/griptape-maya/.venv/lib/python3.11/site-packages"
+# )
 maya.utils.executeDeferred(initialize_griptape)

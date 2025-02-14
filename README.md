@@ -9,7 +9,26 @@ A collection of Maya tools and utilities built with Griptape.
 git clone https://github.com/shhlife/griptape-maya.git
 ```
 
-2. Create a symbolic link to the module file:
+2. Install dependencies using Poetry (in the `env` directory)
+
+```bash
+cd griptape-maya
+poetry install
+```
+
+3. Make sure your Module file points to the right spot
+
+The `griptape-maya.mod` file needs to point to your local repository path. Edit the path in griptape-maya.mod to match your system:
+
+```bash
+# macOS/Linux
++ griptape-maya 1.0 ~/Documents/GitHub/griptape-maya/src
+
+# Windows
++ griptape-maya 1.0 %USERPROFILE%\Documents\GitHub\griptape-maya\src
+```
+
+4. Create a symbolic link to the module file:
 
 ```bash
 # macOS/Linux
@@ -22,25 +41,7 @@ mkdir "%USERPROFILE%\Documents\maya\modules"
 mklink "%USERPROFILE%\Documents\maya\modules\griptape-maya.mod" "PATH\TO\griptape-maya\griptape-maya.mod"
 ```
 
-3. Install dependencies using Poetry (in the `env` directory)
 
-```bash
-cd griptape-maya
-poetry install
-```
-
-
-4. Make sure your Module file points to the right spot
-
-The `griptape-maya.mod` file needs to point to your local repository path. Edit the path in griptape-maya.mod to match your system:
-
-```bash
-# macOS/Linux
-+ griptape-maya 1.0 ~/Documents/GitHub/griptape-maya/src
-
-# Windows
-+ griptape-maya 1.0 %USERPROFILE%\Documents\GitHub\griptape-maya\src
-```
 
 5. Run Maya
 

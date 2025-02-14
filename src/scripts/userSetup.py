@@ -4,6 +4,7 @@ from pathlib import Path
 
 import maya.cmds as cmds
 import maya.utils
+from griptape_tools.menu import create_menu
 
 
 def get_ssl_cert_path():
@@ -55,15 +56,19 @@ def initialize_griptape():
         print(f"Python version: {sys.version}")
 
         print("\nAttempting to import griptape_tools.core...")
-        import griptape_tools.core as core
 
         print("Successfully imported griptape_tools.core")
 
         print("\nSetting up SSL...")
         setup_ssl()
 
-        print("\nRebuilding menu...")
-        core.rebuild_menu()
+        print("\nCreating menu...")
+        try:
+            create_menu()
+            print("Griptape menu initialized")
+        except Exception as e:
+            cmds.warning(f"Failed to create Griptape menu: {str(e)}")
+
         print("Griptape Tools initialized successfully")
         print("---------------------------------------------")
     except Exception as e:

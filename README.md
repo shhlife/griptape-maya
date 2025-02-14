@@ -21,3 +21,20 @@ python install.py
 ```
 
 Follow the instructions. :)
+
+## Updating
+
+To get the latest version, you should be able to just do:
+
+```bash
+cd griptape-maya
+git pull
+```
+
+and that'll grab the latest code. If you want to just double-check and make sure all your libraries are up to date you can do:
+
+```bash
+python install.py
+```
+
+and it'll run through the install again, updating only what's required.

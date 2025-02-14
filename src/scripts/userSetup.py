@@ -1,78 +1,78 @@
-# src/scripts/userSetup.py
 import os
 import sys
+from pathlib import Path
 
 import maya.cmds as cmds
 import maya.utils
 
 
-def get_venv_site_packages():
-    """Get the path to the virtual environment's site-packages"""
-    # Get the module path first
-    module_path = cmds.moduleInfo(moduleName="griptape-maya", path=True)
+def get_ssl_cert_path():
+    """Get SSL certificate path based on platform"""
+    if sys.platform == "darwin":  # macOS
+        cert_paths = [
+            Path("/etc/ssl/cert.pem"),
+            Path("/usr/local/etc/openssl/cert.pem"),
+        ]
+    elif sys.platform == "win32":  # Windows
+        cert_paths = [
+            Path(sys.executable).parent
+            / "lib"
+            / "site-packages"
+            / "certifi"
+            / "cacert.pem",
+        ]
+    else:  # Linux
+        cert_paths = [
+            Path("/etc/ssl/certs/ca-certificates.crt"),
+            Path("/etc/pki/tls/certs/ca-bundle.crt"),
+        ]
 
-    # Get current Python version
-    py_version = f"python{sys.version_info.major}.{sys.version_info.minor}"
+    # Return the first existing cert path
+    for cert_path in cert_paths:
+        if cert_path.exists():
+            return str(cert_path)
 
-    # Go up from src to project root and into .venv with correct Python version
-    venv_path = os.path.join(
-        os.path.dirname(module_path), ".venv", "lib", py_version, "site-packages"
-    )
-
-    if os.path.exists(venv_path):
-        return venv_path
-    else:
-        cmds.warning(f"Virtual environment not found at: {venv_path}")
-        return None
+    return None
 
 
 def setup_ssl():
-    """Setup SSL certificates based on OS"""
-    if sys.platform == "darwin":  # macOS
-        cert_path = "/etc/ssl/cert.pem"
-    elif sys.platform == "win32":  # Windows
-        # Windows usually handles certificates through the OS
-        # but we can point to Python's default location if needed
-        cert_path = os.path.join(
-            os.path.dirname(sys.executable),
-            "Lib",
-            "site-packages",
-            "certifi",
-            "cacert.pem",
-        )
-    else:  # Linux
-        cert_path = "/etc/ssl/certs/ca-certificates.crt"  # Common Linux location
-
-    if os.path.exists(cert_path):
+    """Setup SSL certificates"""
+    cert_path = get_ssl_cert_path()
+    if cert_path:
         os.environ["SSL_CERT_FILE"] = cert_path
-        print(f"SSL certificates configured for {sys.platform}")
+        print(f"SSL certificates configured: {cert_path}")
     else:
-        cmds.warning(f"Could not find SSL certificates at {cert_path}")
+        cmds.warning("Could not find SSL certificates")
 
 
 def initialize_griptape():
     try:
+        print("---------------------------------------------")
+        print("Starting Griptape Tools initialization...")
+
+        print("\nInitial Python Environment:")
+        print(f"Python executable: {sys.executable}")
+        print(f"Python version: {sys.version}")
+
+        print("\nAttempting to import griptape_tools.core...")
         import griptape_tools.core as core
 
-        print("---------------------------------------------")
-        print("Initializing Griptape Tools...")
+        print("Successfully imported griptape_tools.core")
 
+        print("\nSetting up SSL...")
         setup_ssl()
 
-        # Add venv to path
-        venv_path = get_venv_site_packages()
-        if venv_path:
-            sys.path.append(venv_path)
-            print(f"Added virtual environment to Python path: {venv_path}")
-
+        print("\nRebuilding menu...")
         core.rebuild_menu()
         print("Griptape Tools initialized successfully")
         print("---------------------------------------------")
     except Exception as e:
-        cmds.warning(f"Failed to initialize Griptape Tools: {e}")
+        cmds.warning(f"Failed to initialize Griptape Tools: {str(e)}")
+        import traceback
+
+        print("\nFull traceback:")
+        traceback.print_exc()
+        cmds.warning("Check script editor for full error details")
 
 
-# sys.path.append(
-#     "/Users/jason/Documents/GitHub/griptape-maya/.venv/lib/python3.11/site-packages"
-# )
 maya.utils.executeDeferred(initialize_griptape)

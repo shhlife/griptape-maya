@@ -25,7 +25,7 @@ mklink "%USERPROFILE%\Documents\maya\modules\griptape-maya.mod" "PATH\TO\griptap
 3. Install dependencies using Poetry (in the `env` directory)
 
 ```bash
-cd env
+cd griptape-maya
 poetry install
 ```
 

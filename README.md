@@ -13,7 +13,7 @@ git clone https://github.com/shhlife/griptape-maya.git
 
 ```bash
 cd griptape-maya
-poetry install
+poetry install --no-root
 ```
 
 3. Make sure your Module file points to the right spot

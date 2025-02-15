@@ -12,17 +12,17 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+# api_keys.py
+API_KEYS = {
+    "OPENAI_API_KEY": "https://platform.openai.com/api-keys",
+    "GT_CLOUD_API_KEY": "https://cloud.griptape.ai",
+    # Add more keys here if needed
+}
+
 
 class APIKeyManager(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-
-        # Dictionary of API keys and their documentation URLs
-        self.api_keys = {
-            "OPENAI_API_KEY": "https://platform.openai.com/api-keys",
-            "GT_CLOUD_API_KEY": "https://cloud.griptape.ai",
-            # Add more keys and their URLs here
-        }
 
         self.setWindowTitle("API Key Manager")
         self.setMinimumWidth(500)
@@ -31,7 +31,7 @@ class APIKeyManager(QDialog):
         main_layout = QVBoxLayout(self)
 
         # Create a widget for each API key
-        for key, url in self.api_keys.items():
+        for key, url in API_KEYS.items():
             row = QHBoxLayout()
 
             # Label
@@ -42,8 +42,14 @@ class APIKeyManager(QDialog):
             # Input field
             input_field = QLineEdit()
             input_field.setObjectName(key)  # Set object name for later reference
-            current_value = os.getenv(key, "")
-            input_field.setText(current_value)
+
+            # Retrieve stored value from optionVars, fallback to environment variable
+            stored_value = (
+                cmds.optionVar(q=key)
+                if cmds.optionVar(exists=key)
+                else os.getenv(key, "")
+            )
+            input_field.setText(stored_value)
             input_field.setEchoMode(QLineEdit.Password)  # Hide the API key
             row.addWidget(input_field)
 
@@ -70,20 +76,14 @@ class APIKeyManager(QDialog):
         webbrowser.open(url)
 
     def save_keys(self):
-        # Find Maya's user preferences directory
-        maya_app_dir = os.path.expanduser("~/Library/Preferences/Autodesk/maya")
-        if not os.path.exists(maya_app_dir):
-            maya_app_dir = os.path.expanduser("~/maya")  # Windows fallback
-
-        # Create or update the env file
-        env_file = os.path.join(maya_app_dir, "env_vars.env")
-
-        with open(env_file, "w") as f:
-            for key in self.api_keys.keys():
-                input_field = self.findChild(QLineEdit, key)
-                if input_field and input_field.text():
-                    f.write(f"{key}={input_field.text()}\n")
-                    os.environ[key] = input_field.text()
+        """Save API keys to Maya's optionVars."""
+        for key in API_KEYS.keys():
+            input_field = self.findChild(QLineEdit, key)
+            if input_field:
+                cmds.optionVar(sv=(key, input_field.text()))  # Save in Maya's settings
+                os.environ[key] = (
+                    input_field.text()
+                )  # Update the current session environment
 
         self.close()
         cmds.confirmDialog(
@@ -96,8 +96,7 @@ def show_api_key_manager():
     try:
         dialog.close()
         dialog.deleteLater()
-    except Exception as e:
-        print(e)
+    except Exception:
         pass
 
     dialog = APIKeyManager()

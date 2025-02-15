@@ -1,3 +1,4 @@
 griptape[drivers-prompt-anthropic,drivers-rerank-cohere,drivers-vector-pgvector,drivers-prompt-ollama]
 python-dotenv
 httpx
+markdown

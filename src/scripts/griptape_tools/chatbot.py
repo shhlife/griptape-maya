@@ -8,7 +8,6 @@ from griptape.utils import Stream
 from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
-    QDockWidget,
     QHBoxLayout,
     QMainWindow,
     QPushButton,
@@ -20,6 +19,8 @@ from PySide6.QtWidgets import (
 )
 from shiboken6 import wrapInstance
 
+from .maya_tool import MayaTool
+
 
 class ChatbotUI(QWidget):
     update_signal = Signal(str)
@@ -27,10 +28,13 @@ class ChatbotUI(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Griptape Chat")
-        self.agent = Agent(stream=True)
+        self.agent = Agent(tools=[MayaTool()], stream=True)
 
         self.setup_ui()
         self.update_signal.connect(self.update_chat)
+
+        # 🚀 Set focus on the input field when the UI opens
+        self.input_field.setFocus()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -166,33 +170,49 @@ def get_maya_main_window():
 
 
 def show_chatbot():
-    global chatbot_dock
-
-    # If the dock already exists, delete it
+    # If the dock already exists, just show it and force correct size
     if cmds.workspaceControl("ChatbotDock", q=True, exists=True):
-        cmds.deleteUI("ChatbotDock")
+        cmds.workspaceControl("ChatbotDock", e=True, visible=True)
+        cmds.control("ChatbotDock", e=True, visible=True)
+        cmds.workspaceControl(
+            "ChatbotDock", e=True, height=500, width=400
+        )  # 🚀 Ensure correct initial size
+        cmds.refresh()
+        return  # ✅ Exit early if the UI already exists
 
     # Create the workspace control
     cmds.workspaceControl(
-        "ChatbotDock", label="Griptape Chat", dockToMainWindow=["right", 1]
+        "ChatbotDock",
+        label="Griptape Chat",
+        dockToMainWindow=["right", 1],
+        retain=False,
     )
 
-    # Retrieve the workspace control widget
+    # Get the workspace control as a QWidget
     workspace_control_ptr = omui.MQtUtil.findControl("ChatbotDock")
     if not workspace_control_ptr:
         cmds.warning("Failed to find workspace control.")
         return
 
-    workspace_control_widget = wrapInstance(int(workspace_control_ptr), QMainWindow)
+    workspace_control_widget = wrapInstance(int(workspace_control_ptr), QWidget)
 
-    # Create and set up the chatbot UI
-    chatbot_dock = QDockWidget("Griptape Chat", parent=workspace_control_widget)
-    chatbot_dock.setObjectName("ChatbotDockWidget")
-    chatbot_dock.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+    # ✅ Make sure workspace control has a layout
+    if not workspace_control_widget.layout():
+        workspace_control_widget.setLayout(QVBoxLayout())
 
-    chatbot_ui = ChatbotUI()  # Make sure the chatbot UI is instantiated
-    chatbot_dock.setWidget(chatbot_ui)
+    # ✅ Create the chatbot UI and make it **expand** fully
+    chatbot_ui = ChatbotUI(parent=workspace_control_widget)
+    chatbot_ui.setSizePolicy(
+        QSizePolicy.Expanding, QSizePolicy.Expanding
+    )  # 🚀 Allow full expansion
+    workspace_control_widget.layout().addWidget(chatbot_ui)
 
-    # Make sure the chatbot UI is visible
-    chatbot_dock.show()
-    workspace_control_widget.layout().addWidget(chatbot_dock)
+    chatbot_ui.show()
+
+    # 🔥 Ensure it appears with correct size
+    cmds.workspaceControl("ChatbotDock", e=True, visible=True)
+    cmds.control("ChatbotDock", e=True, visible=True)
+    cmds.workspaceControl(
+        "ChatbotDock", e=True, height=500, width=400
+    )  # 🚀 Force correct size
+    cmds.refresh()

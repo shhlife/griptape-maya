@@ -4,7 +4,17 @@ from pathlib import Path
 
 import maya.cmds as cmds
 import maya.utils
+from griptape_tools.api_keys import API_KEYS  # ✅ Import API key definitions
 from griptape_tools.menu import create_menu
+
+
+def load_api_keys():
+    """Load API keys from Maya optionVars and set them as environment variables."""
+    for key in API_KEYS.keys():
+        if cmds.optionVar(exists=key):
+            os.environ[key] = cmds.optionVar(q=key)  # Set environment variable
+
+    print("[Maya] API keys loaded into environment variables.")
 
 
 def get_ssl_cert_path():
@@ -80,4 +90,6 @@ def initialize_griptape():
         cmds.warning("Check script editor for full error details")
 
 
+# Run these on maya startup
+load_api_keys()
 maya.utils.executeDeferred(initialize_griptape)

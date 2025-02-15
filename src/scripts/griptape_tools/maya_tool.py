@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 
-import maya.cmds as mc
 from attr import define
 from griptape.artifacts import ErrorArtifact, TextArtifact
 from griptape.tools import BaseTool
@@ -55,7 +54,7 @@ class MayaTool(BaseTool):
                 {
                     Literal(
                         "command_str",
-                        description="Maya python command to execute. Examples: ls(sl=True), polyCube(), polySphere(radius=2), createNode( 'transform', n='transform1' ) ",
+                        description="Maya python command to execute. Examples: ls(sl=1), polyCube(), polySphere(radius=2), createNode( 'transform', n='transform1' ) ",
                     ): str,
                 }
             ),
@@ -67,32 +66,7 @@ class MayaTool(BaseTool):
             print(f"Executing: {command_str}")
 
             # ✅ Split at the first "(" to separate command and parameters
-            cmd_split = command_str.split("(", 1)
-
-            if len(cmd_split) != 2:
-                return ErrorArtifact(f"Invalid command format: {command_str}")
-
-            cmd_name = cmd_split[0].strip()  # Extract the Maya command name
-            args_str = (
-                cmd_split[1].rstrip(")").strip()
-            )  # Extract arguments without trailing ")"
-
-            # ✅ Check if the Maya command exists
-            if not hasattr(mc, cmd_name):
-                return ErrorArtifact(f"Invalid Maya command: {cmd_name}")
-
-            cmd = getattr(mc, cmd_name)  # Get the Maya function
-
-            # ✅ Parse arguments safely
-            print(f"Parsing arguments: {args_str}")
-            kwargs = parse_parameters(args_str)
-
-            # ✅ Debugging: Check the actual types before calling Maya
-            print(f"Executing: {cmd_name}({kwargs})")
-            print(f"Types: { {k: type(v) for k, v in kwargs.items()} }")
-
-            result = cmd(**kwargs) if kwargs else cmd()
-            print(result)
+            result = eval(f"mc.{command_str}")
             return TextArtifact(str(result))
         except Exception as e:
             return ErrorArtifact(str(e))

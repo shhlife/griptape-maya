@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import maya
+import maya.cmds as cmds
 from attr import define
 from griptape.artifacts import ErrorArtifact, TextArtifact
 from griptape.tools import BaseTool
@@ -49,13 +50,15 @@ class MayaTool(BaseTool):
 
         # Create a namespace
         namespace = {}
-
         try:
             with open(input_file) as script_file:
                 script_code = script_file.read()
+                # start undo chunk
+                cmds.undoInfo(openChunk=True)
                 maya.utils.executeInMainThreadWithResult(
                     lambda: exec(script_code, namespace)
                 )
+                cmds.undoInfo(closeChunk=True)
 
             # Print results
             # print(f"Script Execution Completed. Namespace: {namespace}")

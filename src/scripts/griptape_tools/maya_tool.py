@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import maya
 from attr import define
 from griptape.artifacts import ErrorArtifact, TextArtifact
 from griptape.tools import BaseTool
@@ -30,15 +31,20 @@ class MayaTool(BaseTool):
         input_file = "/var/tmp/test.py"
 
         with open(input_file, "w") as f:
-            f.write("import maya\nimport maya.cmds as cmds\n")
+            f.write("import maya.cmds as cmds\n")
             f.write("results = []\n")
             for command in command_list:
-                # if command has True or False, convert it to boolean
-                f.write(
-                    f"results.append(maya.utils.executeInMainThreadWithResult(lambda: {command}))\n"
-                )
+                # if command starts with cmds, then it's a maya command and add it to the results
+                # But the command may be indented, so we'll need to strip it, then add the spacing back
+                # with results.append(command)
+                if command.strip().startswith("cmds."):
+                    # get the spacing that was there in front of the command
+                    spacing = command.split("cmds.")[0]
+                    f.write(f"{spacing}results.append({command})\n")
+                else:
+                    f.write(f"{command}\n")
 
-            f.write("print(results)")
+            # f.write("print(results)")
         print(f"Saved to {input_file}")
 
         # Create a namespace
@@ -46,10 +52,13 @@ class MayaTool(BaseTool):
 
         try:
             with open(input_file) as script_file:
-                exec(script_file.read(), namespace)
+                script_code = script_file.read()
+                maya.utils.executeInMainThreadWithResult(
+                    lambda: exec(script_code, namespace)
+                )
 
-            result = namespace.get("results")
-
-            return TextArtifact(str(result))
+            # Print results
+            # print(f"Script Execution Completed. Namespace: {namespace}")
+            return TextArtifact(str(namespace["results"]))
         except Exception as e:
-            return ErrorArtifact(str(e))
+            print(f"Execution Error: {e}")

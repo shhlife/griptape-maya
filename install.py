@@ -55,6 +55,44 @@ def find_existing_module():
     return existing_installations
 
 
+def install_portaudio():
+    """Installs PortAudio and PyAudio based on the user's OS."""
+
+    try:
+        import pyaudio
+
+        success("✔ PyAudio is already installed and working.")
+        return True  # PyAudio is already installed
+    except ImportError:
+        warning("PyAudio not found. Installing PortAudio and PyAudio...")
+
+    try:
+        if sys.platform == "win32":
+            info("🟡 Installing PyAudio on Windows...")
+            subprocess.run(["pip", "install", "pipwin"], check=True)
+            subprocess.run(["pipwin", "install", "pyaudio"], check=True)
+        elif sys.platform == "darwin":  # macOS
+            info("🟡 Installing PortAudio on macOS...")
+            subprocess.run(["brew", "install", "portaudio"], check=True)
+            subprocess.run(["pip", "install", "pyaudio"], check=True)
+        elif sys.platform == "linux":
+            info("🟡 Installing PortAudio on Linux...")
+            subprocess.run(
+                ["sudo", "apt", "install", "-y", "portaudio19-dev"], check=True
+            )
+            subprocess.run(["pip", "install", "pyaudio"], check=True)
+        else:
+            error("❌ Unsupported operating system.")
+            return False
+
+        # ✅ Verify installation
+        success("✔ PortAudio and PyAudio installed successfully!")
+        return True
+    except Exception as e:
+        error(f"❌ Failed to install PortAudio/PyAudio: {e}")
+        return False
+
+
 def get_mayapy_path():
     """Get the path to mayapy based on the operating system"""
     if sys.platform == "win32":
@@ -336,8 +374,13 @@ def install_requirements():
 def main():
     header("\n=== Griptape Maya Tools Installation ===\n")
 
+    # Step 1: Install PortAudio & PyAudio
+    header("\nStep 1: Checking and Installing Audio Dependencies...")
+    if not install_portaudio():
+        error("❌ Audio dependencies installation failed. ")
+        return
     # Step 1: Find Maya installation
-    header("Step 1: Locating Maya installation...")
+    header("Step 2: Locating Maya installation...")
     mayapy = get_mayapy_path()
     if not mayapy:
         error("Error: Could not find Maya installation. Installation cancelled.")
@@ -373,7 +416,7 @@ def main():
     # Only proceed with module installation if not skipping
     if not existing_mods or action != "2":
         # Step 2: Choose module installation location
-        header("\nStep 2: Choosing module installation location...")
+        header("\nStep 3: Choosing module installation location...")
         module_paths = get_maya_module_paths()
         if not module_paths:
             warning(
@@ -390,7 +433,7 @@ def main():
             return
 
         # Step 3: Install module
-        header("\nStep 3: Installing module...")
+        header("\nStep 4: Installing module...")
         try:
             install_module(chosen_path)
             success("Module installation successful!")
@@ -399,7 +442,7 @@ def main():
             return
 
     # Step 4: Install/Upgrade Python packages
-    header("\nStep 4: Installing/Upgrading Python packages...")
+    header("\nStep 5: Installing/Upgrading Python packages...")
     if install_requirements():
         success("\nPython requirements processed successfully!")
     else:

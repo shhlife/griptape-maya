@@ -1,11 +1,16 @@
 import threading
+import wave
 
 import maya.cmds as cmds
 import maya.OpenMayaUI as omui
 import maya.utils
+import pyaudio
+from griptape.drivers.prompt.openai import OpenAiChatPromptDriver
 from griptape.structures import Agent
 from griptape.utils import Stream
-from PySide6.QtCore import QEvent, Qt, Signal
+from pydub import AudioSegment
+from pydub.utils import which
+from PySide6.QtCore import QEvent, Qt, QTimer, Signal
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -28,13 +33,27 @@ class ChatbotUI(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Griptape Chat")
-        self.agent = Agent(tools=[MayaTool()], stream=True)
+        self.text_prompt_driver = OpenAiChatPromptDriver(model="gpt-4o", stream=True)
+        self.audio_prompt_driver = OpenAiChatPromptDriver(
+            model="gpt-4o-audio-preview", stream=True
+        )
+        self.agent = Agent(
+            prompt_driver=self.audio_prompt_driver,
+            tools=[MayaTool()],
+            stream=True,
+        )
+        self.audio_file_wav = "/Users/jason/Desktop/recorded_audio.wav"  # Save WAV file
+        self.audio_file_mp3 = "/Users/jason/Desktop/recorded_audio.mp3"  # Save MP3 file
+        self.is_listening = False
+        self.listening_thread = None
 
         self.setup_ui()
         self.update_signal.connect(self.update_chat)
 
         # 🚀 Set focus on the input field when the UI opens
         self.input_field.setFocus()
+        # Ensure ffmpeg is found
+        AudioSegment.converter = which("ffmpeg")
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
@@ -97,6 +116,12 @@ class ChatbotUI(QWidget):
         """)
         send_button.clicked.connect(self.send_message)
         input_layout.addWidget(send_button)
+        # 🎤 Add voice mode button
+        self.voice_button = QPushButton("🎤")
+        self.voice_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.voice_button.setCheckable(True)
+        self.voice_button.clicked.connect(self.toggle_voice_mode)
+        input_layout.addWidget(self.voice_button)
 
         layout.addLayout(input_layout)
 
@@ -121,6 +146,75 @@ class ChatbotUI(QWidget):
         self.append_chat(f"You: {message}", "#FFD700", newline=True)
 
         threading.Thread(target=self.generate_response, args=(message,)).start()
+
+    def toggle_voice_mode(self):
+        if self.is_listening:
+            self.stop_listening()
+        else:
+            self.start_listening()
+
+    def start_listening(self):
+        self.is_listening = True
+        self.voice_button.setText("⏹️ Stop")
+        self.listening_thread = threading.Thread(target=self.record_audio, daemon=True)
+        self.listening_thread.start()
+
+    def stop_listening(self):
+        self.is_listening = False
+        self.voice_button.setText("🎤 Record")
+        if self.listening_thread and self.listening_thread.is_alive():
+            self.listening_thread.join(timeout=1)
+        self.append_chat("Recording stopped. Audio saved.", "#87CEFA")
+        self.convert_wav_to_mp3()
+
+    def record_audio(self):
+        """Capture microphone audio and save as a WAV file."""
+        pa = pyaudio.PyAudio()
+        stream = pa.open(
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=4800,  # Match your microphone sample rate
+            input=True,
+            input_device_index=5,
+            frames_per_buffer=1024,
+        )
+
+        frames = []
+        print("Recording started...")
+        counter = 0
+        while self.is_listening:
+            data = stream.read(1024, exception_on_overflow=False)
+            print(f"Captured {len(data)} bytes (Chunk {counter})")  # Debugging
+            counter += 1
+            frames.append(data)
+
+        print("Saving recorded audio...")
+        stream.stop_stream()
+        stream.close()
+        pa.terminate()
+
+        with wave.open(self.audio_file_wav, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(pa.get_sample_size(pyaudio.paInt16))
+            wf.setframerate(48000)
+            wf.writeframes(b"".join(frames))
+
+        print(f"Audio saved to {self.audio_file_wav}")
+        QTimer.singleShot(
+            0, lambda: self.append_chat("Audio recorded successfully.", "#87CEFA")
+        )
+
+    def convert_wav_to_mp3(self):
+        """Convert the recorded WAV file to MP3 format."""
+        print("Converting WAV to MP3...")
+        AudioSegment.converter = "/opt/homebrew/bin/ffmpeg"
+        audio = AudioSegment.from_wav(self.audio_file_wav)
+        audio.export(self.audio_file_mp3, format="mp3")
+        print(f"MP3 saved to {self.audio_file_mp3}")
+        QTimer.singleShot(
+            0,
+            lambda: self.append_chat("Audio converted to MP3 successfully.", "#87CEFA"),
+        )
 
     def append_to_last_chat(self, text):
         """Appends text to the last Assistant message without creating new lines."""

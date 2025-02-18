@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import getpass
+
 import maya
 import maya.cmds as cmds
 from attr import define
@@ -11,6 +13,10 @@ from schema import Literal, Schema
 
 @define
 class MayaTool(BaseTool):
+    @activity(config={"description": "Can be used to get the username"})
+    def get_username(self, params: dict) -> TextArtifact | ErrorArtifact:
+        return TextArtifact(getpass.getuser())
+
     @activity(
         config={
             "description": "Can be used to execute python commands in Maya",
@@ -18,7 +24,7 @@ class MayaTool(BaseTool):
                 {
                     Literal(
                         "command_list",
-                        description="Python commands to execute. If using a Maya command, preface it with `cmds`. Examples: ['cmds.ls(sl=1)', 'cmds.polyCube()', 'cmds.polySphere(radius=2)']",
+                        description="Python commands to execute. If using a Maya command, preface it with `cmds`. Examples: ['cmds.ls(sl=1)', 'cmds.polyCube()', 'cmds.polySphere(radius=2)']. If you need to know the results of a non-maya command, append it to the results list. Example: results.append(os.getenv('HOME'))",
                     ): list[str],
                 }
             ),

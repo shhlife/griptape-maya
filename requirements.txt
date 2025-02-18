@@ -2,3 +2,6 @@ griptape[drivers-prompt-anthropic,drivers-rerank-cohere,drivers-vector-pgvector,
 python-dotenv
 httpx
 markdown
+sounddevice 
+numpy 
+scipy

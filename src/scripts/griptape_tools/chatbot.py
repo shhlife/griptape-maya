@@ -1,3 +1,4 @@
+import tempfile
 import threading
 import wave
 
@@ -6,6 +7,7 @@ import maya.OpenMayaUI as omui
 import maya.utils
 import pyaudio
 from griptape.drivers.prompt.openai import OpenAiChatPromptDriver
+from griptape.loaders import AudioLoader
 from griptape.structures import Agent
 from griptape.utils import Stream
 from pydub import AudioSegment
@@ -42,8 +44,9 @@ class ChatbotUI(QWidget):
             tools=[MayaTool()],
             stream=True,
         )
-        self.audio_file_wav = "/Users/jason/Desktop/recorded_audio.wav"  # Save WAV file
-        self.audio_file_mp3 = "/Users/jason/Desktop/recorded_audio.mp3"  # Save MP3 file
+        self.temp_path = tempfile.gettempdir()
+        self.audio_file_wav = f"{self.temp_path}/recorded_audio.wav"
+        self.audio_artifact = None
         self.is_listening = False
         self.listening_thread = None
 
@@ -136,16 +139,18 @@ class ChatbotUI(QWidget):
         return super().eventFilter(obj, event)
 
     def send_message(self):
-        message = self.input_field.toPlainText().strip()
-        if not message:
+        message_str = self.input_field.toPlainText().strip()
+        if not message_str and not self.audio_artifact:
             return
 
+        message = (message_str, self.audio_artifact)
         self.input_field.clear()
-
         # Ensures user messages start on a new line
-        self.append_chat(f"You: {message}", "#FFD700", newline=True)
+        self.append_chat(f"You: {message_str}", "#FFD700", newline=True)
 
         threading.Thread(target=self.generate_response, args=(message,)).start()
+
+        self.audio_artifact = None
 
     def toggle_voice_mode(self):
         if self.is_listening:
@@ -157,6 +162,8 @@ class ChatbotUI(QWidget):
         self.is_listening = True
         self.voice_button.setText("⏹️ Stop")
         self.listening_thread = threading.Thread(target=self.record_audio, daemon=True)
+        self.append_chat("Recording started...", "#87CEFA")
+
         self.listening_thread.start()
 
     def stop_listening(self):
@@ -164,8 +171,8 @@ class ChatbotUI(QWidget):
         self.voice_button.setText("🎤 Record")
         if self.listening_thread and self.listening_thread.is_alive():
             self.listening_thread.join(timeout=1)
-        self.append_chat("Recording stopped. Audio saved.", "#87CEFA")
-        self.convert_wav_to_mp3()
+        self.append_chat("Recording stopped. Processing audio...", "#87CEFA")
+        QTimer.singleShot(0, self.process_audio)
 
     def record_audio(self):
         """Capture microphone audio and save as a WAV file."""
@@ -173,19 +180,15 @@ class ChatbotUI(QWidget):
         stream = pa.open(
             format=pyaudio.paInt16,
             channels=1,
-            rate=4800,  # Match your microphone sample rate
+            rate=48000,
             input=True,
-            input_device_index=5,
             frames_per_buffer=1024,
         )
 
         frames = []
         print("Recording started...")
-        counter = 0
         while self.is_listening:
             data = stream.read(1024, exception_on_overflow=False)
-            print(f"Captured {len(data)} bytes (Chunk {counter})")  # Debugging
-            counter += 1
             frames.append(data)
 
         print("Saving recorded audio...")
@@ -204,17 +207,13 @@ class ChatbotUI(QWidget):
             0, lambda: self.append_chat("Audio recorded successfully.", "#87CEFA")
         )
 
-    def convert_wav_to_mp3(self):
-        """Convert the recorded WAV file to MP3 format."""
-        print("Converting WAV to MP3...")
-        AudioSegment.converter = "/opt/homebrew/bin/ffmpeg"
-        audio = AudioSegment.from_wav(self.audio_file_wav)
-        audio.export(self.audio_file_mp3, format="mp3")
-        print(f"MP3 saved to {self.audio_file_mp3}")
-        QTimer.singleShot(
-            0,
-            lambda: self.append_chat("Audio converted to MP3 successfully.", "#87CEFA"),
-        )
+    def process_audio(self):
+        """Process recorded audio and send to LLM."""
+        try:
+            self.audio_artifact = AudioLoader().load(self.audio_file_wav)
+            self.send_message()
+        except Exception as e:
+            cmds.warning(f"Error processing audio: {str(e)}")
 
     def append_to_last_chat(self, text):
         """Appends text to the last Assistant message without creating new lines."""

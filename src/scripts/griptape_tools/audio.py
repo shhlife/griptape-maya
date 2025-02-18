@@ -211,9 +211,9 @@ if __name__ == "__main__":
         agent = Agent(
             prompt_driver=OpenAiChatPromptDriver(model="gpt-4o-audio-preview")
         )
-        # with AudioPlayer() as audio_player:
-        for audio_artifact in AudioStream().run():
-            for event in agent.run_stream(audio_artifact):
-                if isinstance(event, AudioChunkEvent):
-                    print(event.data)
-                    # audio_player.audio_queue.put(base64.b64decode(event.data))
+        with AudioPlayer() as audio_player:
+            for audio_artifact in AudioStream().run():
+                for event in agent.run_stream(audio_artifact):
+                    if isinstance(event, AudioChunkEvent):
+                        print(event.data)
+                        audio_player.audio_queue.put(base64.b64decode(event.data))
